@@ -18,6 +18,7 @@ func main() {
 
 	outputPtr := flag.String("o", "", "Output File Name")
 	widthPtr := flag.Int("w", 40, "Width of the output")
+	colorPtr := flag.Bool("c", false, "Colorful Output")
 	flag.Parse()
 
 	args := flag.Args()
@@ -66,6 +67,11 @@ func main() {
 		}
 		defer f.Close()
 		writer = f
+
+		if *colorPtr {
+			fmt.Println("Warning: Color disabled for file output (files don't support ANSI colors well).")
+			*colorPtr = false
+		}
 	}
 
 	bufferedWriter := bufio.NewWriter(writer)
@@ -78,11 +84,24 @@ func main() {
 
 			i := int(gray.Y) * (len(asciiChars) - 1) / 255
 
-			fmt.Fprintf(bufferedWriter, "%c", asciiChars[i])
+			if *colorPtr {
+				r, g, b, _ := c.RGBA()
+
+				r8 := uint(r >> 8)
+				g8 := uint(g >> 8)
+				b8 := uint(b >> 8)
+
+				fmt.Fprintf(bufferedWriter, "\x1b[38;2;%d;%d;%dm%c\x1b[0m", r8, g8, b8, asciiChars[i])
+			} else {
+				fmt.Fprintf(bufferedWriter, "%c", asciiChars[i])
+			}
 		}
 		fmt.Fprintln(bufferedWriter)
 	}
 
 	bufferedWriter.Flush()
 
+	if *outputPtr != "" {
+		fmt.Println("\nASCII image written to: ", *outputPtr)
+	}
 }
